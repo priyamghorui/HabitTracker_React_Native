@@ -35,8 +35,8 @@ function Navigation(): React.JSX.Element {
             const totalDays = end.diff(start, 'day') - 1;
             // const end = new Date(endDateStr);
             console.log(totalDays);
-            const formattedDate = start.add(i, 'day').format('MMM D, YYYY');
             for (let i = 0; i <= totalDays; i++) {
+              const formattedDate = start.add(i, 'day').format('MMM D, YYYY');
               if (!element?.habitsLog.includes(formattedDate)) {
                 saveHabit(
                   savedState.map(Habit =>

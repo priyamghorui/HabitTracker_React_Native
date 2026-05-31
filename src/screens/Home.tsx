@@ -341,7 +341,7 @@ export default function HabitTrackerScreen() {
         <TouchableOpacity style={styles.historyTopButton} activeOpacity={0.7}>
           {/* <History color="#A5B4FC" size={18} style={{ marginRight: 6 }} /> */}
           {/* <Text style={styles.historyTopButtonText}>History</Text> */}
-          <Text style={styles.historyTopButtonText}>v 1.0</Text>
+          <Text style={styles.historyTopButtonText}>v 1.1</Text>
         </TouchableOpacity>
       </View>
 

@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Provider } from 'react-redux';
@@ -12,63 +11,78 @@ import { hydrateHabits, setLoadFalse } from '../redux/action/action';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 dayjs.extend(customParseFormat);
+
 const Stack = createStackNavigator();
 
 function Navigation(): React.JSX.Element {
   useEffect(() => {
     const init = async () => {
       try {
-        const savedState = await loadHabit();
-        console.log(savedState);
-        const date = new Date().toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        });
-        savedState?.forEach(element => {
+        const loadedState = await loadHabit();
+        if (!loadedState || loadedState.length === 0) {
+          store.dispatch(hydrateHabits([]));
+          return;
+        }
+
+        const todayStr = dayjs().format('MMM D, YYYY');
+        // const todayStr =dayjs("Jun 6, 2026", 'MMM D, YYYY').format('MMM D, YYYY');
+        // console.log(todayStr);
+
+        let updatedState = JSON.parse(JSON.stringify(loadedState));
+        let stateNeedsDiskSync = false;
+
+        updatedState = updatedState.map(element => {
+          let updatedElement = { ...element };
+
           if (
-            element.createdAt != date &&
-            element.completedDays != element.targetDays
+            element.createdAt !== todayStr &&
+            element.completedDays !== element.targetDays
           ) {
+            console.log('<>');
+
             const start = dayjs(element.createdAt, 'MMM D, YYYY');
             const end = dayjs();
+            // const end =dayjs("Jun 6, 2026", 'MMM D, YYYY');
+
             const totalDays = end.diff(start, 'day') - 1;
-            // const end = new Date(endDateStr);
-            console.log(totalDays);
+
+            const habitsLogSet = new Set(element.habitsLog || []);
+
             for (let i = 0; i <= totalDays; i++) {
               const formattedDate = start.add(i, 'day').format('MMM D, YYYY');
-              if (!element?.habitsLog.includes(formattedDate)) {
-                saveHabit(
-                  savedState.map(Habit =>
-                    Habit.id === element?.id
-                      ? {
-                          ...Habit,
-                          status: false,
-                          completedDays: 0,
-                          createdAt: formattedDate,
-                          updatedAt: formattedDate,
-                        }
-                      : Habit,
-                  ),
-                );
+
+              if (!habitsLogSet.has(formattedDate)) {
+                updatedElement.status = false;
+                updatedElement.completedDays = 0;
+                updatedElement.createdAt = formattedDate;
+                updatedElement.updatedAt = formattedDate;
+                stateNeedsDiskSync = true;
                 break;
               }
             }
           }
-          if (!element.habitsLog.includes(date)) {
-            saveHabit(
-              savedState.map(Habit =>
-                Habit.id === element?.id
-                  ? { ...Habit, isCompletedToday: false }
-                  : Habit,
-              ),
-            );
+
+          const habitsLogSetAfterReset = new Set(
+            updatedElement.habitsLog || [],
+          );
+          if (
+            !habitsLogSetAfterReset.has(todayStr) &&
+            updatedElement.isCompletedToday !== false
+          ) {
+            updatedElement.isCompletedToday = false;
+            stateNeedsDiskSync = true;
           }
+
+          return updatedElement;
         });
-        if (savedState) {
-          store.dispatch(hydrateHabits(savedState));
+
+        if (stateNeedsDiskSync) {
+          await saveHabit(updatedState);
         }
+
+        store.dispatch(hydrateHabits(updatedState));
       } catch (e) {
+        console.error('Hydration Error:', e);
         store.dispatch(hydrateHabits([]));
       } finally {
         store.dispatch(setLoadFalse());
@@ -89,11 +103,7 @@ function Navigation(): React.JSX.Element {
           },
         }}
       >
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-          }}
-        >
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Home" component={Home} />
           <Stack.Screen name="History" component={History} />
         </Stack.Navigator>
@@ -101,4 +111,5 @@ function Navigation(): React.JSX.Element {
     </Provider>
   );
 }
+
 export default Navigation;
